@@ -1,6 +1,6 @@
 elovital:
   jwt:
-    secret: ${ELOVITAL_JWT_SECRET}
+    secret: ${JWT_SECRET}
     expiracao-minutos: 480
 
 spring:
@@ -8,14 +8,14 @@ spring:
     name: elovital-backend
 
   datasource:
-    url: ${ELOVITAL_URL_DATABASE}
-    username:  ${ELOVITAL_DATABASE_USERNAME}
-    password:  ${ELOVITAL__DATABASE_PASSWORD}
+    url: ${SPRING_DATASOURCE_URL}
+    username: ${SPRING_DATASOURCE_USERNAME}
+    password: ${SPRING_DATASOURCE_PASSWORD}
 
   jpa:
-    open-in-view: false        # evita consultas "escondidas" na camada de controller
+    open-in-view: false
     hibernate:
-      ddl-auto: update       # o schema é criado pelo Flyway; o Hibernate só confere
+      ddl-auto: validate
     properties:
       hibernate:
         jdbc:
@@ -23,9 +23,12 @@ spring:
 
   security:
     oauth2:
-      resourceserver: { jwt: { public-key-location: classpath:certs/public.pem } }
+      resourceserver:
+        jwt:
+          public-key-location: classpath:certs/public.pem
+
   flyway:
     enabled: true
 
 server:
-  port: 8080
+  port: ${PORT:8080}
