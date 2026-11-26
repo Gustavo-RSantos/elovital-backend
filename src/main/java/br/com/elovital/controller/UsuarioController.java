@@ -3,6 +3,7 @@ package br.com.elovital.controller;
 import br.com.elovital.dto.UsuarioAtualizarRequest;
 import br.com.elovital.dto.UsuarioCriarRequest;
 import br.com.elovital.dto.UsuarioResponse;
+import br.com.elovital.security.SecurityUtils;
 import br.com.elovital.service.UsuarioService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -32,17 +33,20 @@ public class UsuarioController {
 
     @GetMapping("/{id}")
     public UsuarioResponse buscar(@PathVariable Long id) {
+        SecurityUtils.exigirProprioUsuario(id);
         return usuarioService.buscarPorId(id);
     }
 
     @PutMapping("/{id}")
     public UsuarioResponse atualizar(@PathVariable Long id, @Valid @RequestBody UsuarioAtualizarRequest req) {
+        SecurityUtils.exigirProprioUsuario(id);
         return usuarioService.atualizar(id, req);
     }
 
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void remover(@PathVariable Long id) {
+        SecurityUtils.exigirProprioUsuario(id);
         usuarioService.remover(id);
     }
 }

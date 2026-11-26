@@ -4,6 +4,7 @@ import br.com.elovital.dto.IdosoAtualizarRequest;
 import br.com.elovital.dto.IdosoCriarRequest;
 import br.com.elovital.dto.IdosoResponse;
 import br.com.elovital.dto.IdosoResumoResponse;
+import br.com.elovital.exception.AcessoNegadoException;
 import br.com.elovital.exception.ConflitoException;
 import br.com.elovital.exception.RecursoNaoEncontradoException;
 import br.com.elovital.exception.RegraNegocioException;
@@ -11,10 +12,13 @@ import br.com.elovital.model.Idoso;
 import br.com.elovital.model.Usuario;
 import br.com.elovital.model.VinculoAcesso;
 import br.com.elovital.model.enums.StatusVinculo;
+import br.com.elovital.model.enums.TipoRelacao;
 import br.com.elovital.model.enums.TipoPerfil;
 import br.com.elovital.repository.IdosoRepository;
 import br.com.elovital.repository.UsuarioRepository;
 import br.com.elovital.repository.VinculoAcessoRepository;
+import br.com.elovital.security.AcessoIdosoInterceptor;
+import br.com.elovital.security.SecurityUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -39,6 +43,13 @@ public class IdosoService {
     }
 
     public IdosoResponse criar(IdosoCriarRequest req) {
+        Long autenticadoId = SecurityUtils.usuarioIdAtual();
+        Usuario autenticado = usuarioRepository.findById(autenticadoId)
+                .orElseThrow(() -> new AcessoNegadoException("Usuário autenticado não encontrado."));
+        if (autenticado.getTipoPerfil() == TipoPerfil.IDOSO && !autenticadoId.equals(req.usuarioId())) {
+            throw new AcessoNegadoException("Um idoso só pode criar o próprio perfil.");
+        }
+
         Usuario usuario = usuarioRepository.findById(req.usuarioId())
                 .orElseThrow(() -> new RecursoNaoEncontradoException("Usuário", req.usuarioId()));
 
@@ -53,7 +64,19 @@ public class IdosoService {
         idoso.setUsuario(usuario);
         idoso.setDataNascimento(req.dataNascimento());
         idoso.setTipoSanguineo(req.tipoSanguineo());
-        return IdosoResponse.de(idosoRepository.save(idoso));
+        Idoso salvo = idosoRepository.save(idoso);
+
+        // Familiar/cuidador que cadastra o idoso passa a acompanhá-lo (sem isso ele não conseguiria acessá-lo).
+        if (!autenticadoId.equals(usuario.getId())) {
+            VinculoAcesso vinculo = new VinculoAcesso();
+            vinculo.setIdoso(salvo);
+            vinculo.setUsuario(autenticado);
+            vinculo.setTipoRelacao(autenticado.getTipoPerfil() == TipoPerfil.FAMILIAR
+                    ? TipoRelacao.FAMILIAR : TipoRelacao.PROFISSIONAL);
+            vinculo.setStatus(StatusVinculo.ATIVO);
+            vinculoAcessoRepository.save(vinculo);
+        }
+        return IdosoResponse.de(salvo);
     }
 
     @Transactional(readOnly = true)
@@ -70,7 +93,7 @@ public class IdosoService {
 
         List<VinculoAcesso> vinculos = vinculoAcessoRepository.findByUsuarioId(usuarioId);
         for (VinculoAcesso v : vinculos) {
-            if (v.getStatus() == StatusVinculo.ATIVO) {
+            if (AcessoIdosoInterceptor.vigente(v)) {
                 acessiveis.put(v.getIdoso().getId(), v.getIdoso());
             }
         }

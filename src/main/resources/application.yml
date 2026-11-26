@@ -1,11 +1,16 @@
+elovital:
+  jwt:
+    secret: ${ELOVITAL_JWT_SECRET}
+    expiracao-minutos: 480
+
 spring:
   application:
     name: elovital-backend
 
   datasource:
-    url: jdbc:postgresql://localhost:5432/elo-vital
-    username: postgres
-    password: Db@Obj.3213  # defina nas variáveis de ambiente da Run Configuration
+    url: ${ELOVITAL_URL_DATABASE}
+    username:  ${ELOVITAL_DATABASE_USERNAME}
+    password:  ${ELOVITAL__DATABASE_PASSWORD}
 
   jpa:
     open-in-view: false        # evita consultas "escondidas" na camada de controller
@@ -16,6 +21,9 @@ spring:
         jdbc:
           time_zone: UTC
 
+  security:
+    oauth2:
+      resourceserver: { jwt: { public-key-location: classpath:certs/public.pem } }
   flyway:
     enabled: true
 

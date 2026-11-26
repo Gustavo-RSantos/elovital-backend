@@ -1,6 +1,8 @@
 package br.com.elovital.controller;
 
 import br.com.elovital.dto.*;
+import br.com.elovital.exception.AcessoNegadoException;
+import br.com.elovital.security.SecurityUtils;
 import br.com.elovital.service.*;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -45,7 +47,11 @@ public class IdosoController {
 
     @GetMapping
     public List<IdosoResumoResponse> listar(@RequestParam(required = false) Long usuarioId) {
-        return idosoService.listar(usuarioId);
+        Long autenticado = SecurityUtils.usuarioIdAtual();
+        if (usuarioId != null && !usuarioId.equals(autenticado)) {
+            throw new AcessoNegadoException("Você só pode listar os seus próprios pacientes.");
+        }
+        return idosoService.listar(autenticado);
     }
 
     @PostMapping

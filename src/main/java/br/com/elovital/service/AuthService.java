@@ -8,15 +8,13 @@ import br.com.elovital.model.Idoso;
 import br.com.elovital.model.Usuario;
 import br.com.elovital.repository.IdosoRepository;
 import br.com.elovital.repository.UsuarioRepository;
+import br.com.elovital.security.JwtService;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.nio.charset.StandardCharsets;
 import java.time.Instant;
-import java.util.Base64;
 import java.util.Locale;
-import java.util.UUID;
 
 @Service
 @Transactional(readOnly = true)
@@ -25,10 +23,13 @@ public class AuthService {
     private final UsuarioRepository usuarioRepository;
     private final IdosoRepository idosoRepository;
     private final PasswordEncoder passwordEncoder;
+    private final JwtService jwtService;
 
     public AuthService(UsuarioRepository usuarioRepository,
                        IdosoRepository idosoRepository,
-                       PasswordEncoder passwordEncoder) {
+                       PasswordEncoder passwordEncoder,
+                       JwtService jwtService) {
+        this.jwtService = jwtService;
         this.usuarioRepository = usuarioRepository;
         this.idosoRepository = idosoRepository;
         this.passwordEncoder = passwordEncoder;
@@ -47,14 +48,13 @@ public class AuthService {
                 .map(Idoso::getId)
                 .orElse(null);
 
-        String rawToken = usuario.getId() + ":" + usuario.getEmail() + ":" + UUID.randomUUID();
-        String token = Base64.getUrlEncoder().withoutPadding()
-                .encodeToString(rawToken.getBytes(StandardCharsets.UTF_8));
+        Instant agora = Instant.now();
+        String token = jwtService.gerar(usuario, agora);
 
         return new LoginResponse(
                 token,
                 "Bearer",
-                Instant.now(),
+                agora,
                 UsuarioResponse.de(usuario),
                 idosoId
         );
